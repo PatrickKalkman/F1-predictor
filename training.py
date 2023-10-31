@@ -143,6 +143,26 @@ def denormalize_prediction(prediction, scaler):
     return scaler.inverse_transform(np.array([prediction]).reshape(-1, 1))[0][0]
 
 
+def show_training_and_validation_loss_graph(training_losses, validation_losses):
+    plt.figure(figsize=(12, 6))
+    plt.plot(training_losses, label="Training Loss")
+    plt.plot(validation_losses, label="Validation Loss")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title("Training and Validation Loss Over Epochs")
+    plt.show()
+
+
+def number_to_ordinal(n):
+    """Converts a number into its ordinal representation."""
+    if 10 <= n % 100 <= 20:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f"{n}{suffix}"
+
+
 def create_upcoming_race_data_for_positions():
     data = {
         'start_position': list(range(1, 23)),  # Starting positions from 1 to 22
@@ -157,33 +177,19 @@ def create_upcoming_race_data_for_positions():
     return pd.DataFrame(data)
 
 
-def main():
-    # Data Preparation
-    input_data, output_data, scalers, encoder = prepare_data()
+def create_and_show_predictions(predictor, scalers, encoder):
+    upcoming_race_data = create_upcoming_race_data_for_positions()
+    race_predictions = predict_upcoming_races(predictor, upcoming_race_data,
+                                              scalers, encoder)
+    for i, prediction_tensor in enumerate(race_predictions):
+        starting_position_ordinal = number_to_ordinal(i + 1)
+        predicted_position_ordinal = number_to_ordinal(round(denormalize_prediction(prediction_tensor.item(), scalers['result'])))
 
-    # Convert to Tensors
-    feature_tensor = convert_to_tensor(input_data)
-    label_tensor = convert_to_tensor(output_data).unsqueeze(1)
+        print(f"If {upcoming_race_data['name'].iloc[0]} starts {starting_position_ordinal}, he would finish {predicted_position_ordinal}")
 
-    # Initialize Hyperparameters and Model
-    EPOCHS, BATCH_SIZE, LEARNING_RATE = initialize_hyperparameters()
-    predictor, loss_function, model_optimizer, scheduler = initialize_model(
-                                                                 feature_tensor.shape[1],
-                                                                 LEARNING_RATE)
 
-    # Create Dataset and Loaders
-    full_dataset = TensorDataset(feature_tensor, label_tensor)
-    training_set, validation_set, test_set = split_dataset(full_dataset)
-    train_loader = DataLoader(training_set, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(validation_set, batch_size=BATCH_SIZE, shuffle=False)
-
-    # Training and Validation
-    training_losses, validation_losses = execute_training(predictor, scheduler,
-                                                          loss_function, model_optimizer,
-                                                          train_loader, val_loader,
-                                                          EPOCHS)
-
-    test_loader = DataLoader(test_set, batch_size=BATCH_SIZE, shuffle=False)
+def calculate_test_loss(predictor, test_set, batch_size):
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     # Test
     criterion = nn.MSELoss()
     predictor.eval()
@@ -196,22 +202,33 @@ def main():
 
     print(f"Test Loss: {test_loss/len(test_loader):.4f}")
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(training_losses, label="Training Loss")
-    plt.plot(validation_losses, label="Validation Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.title("Training and Validation Loss Over Epochs")
-    plt.show()
 
-    upcoming_race_data = create_upcoming_race_data_for_positions()
-    race_predictions = predict_upcoming_races(predictor, upcoming_race_data,
-                                              scalers, encoder)
-    for i, prediction_tensor in enumerate(race_predictions):
-        predicted_position = denormalize_prediction(prediction_tensor.item(),
-                                                    scalers['result'])
-        print(f"Starting Position: {i+1}, Predicted Finish Position: {round(predicted_position)}")
+def main():
+    input_data, output_data, scalers, encoder = prepare_data()
+
+    feature_tensor = convert_to_tensor(input_data)
+    label_tensor = convert_to_tensor(output_data).unsqueeze(1)
+
+    EPOCHS, BATCH_SIZE, LEARNING_RATE = initialize_hyperparameters()
+    predictor, loss_function, model_optimizer, scheduler = initialize_model(
+                                                                 feature_tensor.shape[1],
+                                                                 LEARNING_RATE)
+
+    full_dataset = TensorDataset(feature_tensor, label_tensor)
+    training_set, validation_set, test_set = split_dataset(full_dataset)
+    train_loader = DataLoader(training_set, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(validation_set, batch_size=BATCH_SIZE, shuffle=False)
+
+    training_losses, validation_losses = execute_training(predictor, scheduler,
+                                                          loss_function, model_optimizer,
+                                                          train_loader, val_loader,
+                                                          EPOCHS)
+
+    calculate_test_loss(predictor, test_set, BATCH_SIZE)
+
+    show_training_and_validation_loss_graph(training_losses, validation_losses)
+
+    create_and_show_predictions(predictor, scalers, encoder)
 
 
 if __name__ == "__main__":
