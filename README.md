@@ -18,4 +18,5 @@ This project was developed and tested with:
 - Numpy 1.26.2
 - Scikit-learn 1.4.0
 
-
+After installation run the training script with:
+```python training.py```
