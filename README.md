@@ -1,6 +1,6 @@
 # F1 Race Outcome Predictor
 
-Repository that contains the code of a [Medium article](https://medium.com/@pkalkmen) called "AI in the Fast Lane: Predicting F1 With PyTorch"
+Repository that contains the code of a [Medium article](https://medium.com/@pkalkmen](https://itnext.io/ai-in-the-fast-lane-predicting-f1-with-pytorch-6b844df7e79e) called "AI in the Fast Lane: Predicting F1 With PyTorch"
 
 ![Decoding motorsport dynamics with Machine Learning](/predict.jpg "Decoding motorsport dynamics with Machine Learning")
 
